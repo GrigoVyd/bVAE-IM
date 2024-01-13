@@ -37,6 +37,8 @@ from tqdm import tqdm
 import logging
 import time
 
+import csv
+
 UPDATE_ITER = 1
 
 class TorchFM(nn.Module):
@@ -113,8 +115,8 @@ class bVAE_IM(object):
             raise ValueError("please define the score function first.")
         self.get_score = score_function
 
-        if configs['opt']['target'] not in ['max', 'min']:
-            raise ValueError("opt target should be max or min.")
+        if configs['opt']['target'] not in ['max', 'min', 'no']:
+            raise ValueError("opt target should be max or min, or no optimization.")
         self.opt_target = configs['opt']['target']
         self.device = device
 
@@ -177,7 +179,12 @@ class bVAE_IM(object):
         result_save_dir = configs['opt']['output']
         if not os.path.exists(result_save_dir):
             os.mkdir(result_save_dir)
-
+        if self.opt_target == 'no':
+            self.results_scores = [self.get_score(mol) for mol in self.results_smiles]
+        with open((os.path.join(result_save_dir, "%s_results.csv" % configs['opt']['prop'])), mode='w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Smiles", configs['opt']['prop']])
+            writer.writerows(list(zip(self.results_smiles, self.results_scores)))
         with open((os.path.join(result_save_dir, "%s_smiles.pkl" % configs['opt']['prop'])), "wb") as f:
             pickle.dump(self.results_smiles, f)
         with open((os.path.join(result_save_dir, "%s_scores.pkl" % configs['opt']['prop'])), "wb") as f:
@@ -197,6 +204,8 @@ class bVAE_IM(object):
             self.train_targets = [-self.get_score(m) for m in self.train_mols]
         elif self.opt_target == 'min':
             self.train_targets = [self.get_score(m) for m in self.train_mols]
+        elif self.opt_target == 'no':
+            self.train_targets == [0 for m in self.train_mols]
         self.train_targets = np.repeat(self.train_targets, self.n_sample).tolist()
         # plus --> minimization; minus --> maximization
 
@@ -422,8 +431,10 @@ class bVAE_IM(object):
         # assert np.round(fm_pred, 3) == np.round(energy[0], 3)    # ensure correctness of qubo
         if self.opt_target == 'max':
             target_new = -self.get_score(mol_new)
-        else:
+        elif self.opt_target == 'min':
             target_new = self.get_score(mol_new)
+        else:
+            target_new = 0
         print("energy: %.3f; target: %.3f" % (energy[0], target_new))
         self.train_smiles.append(smiles_new)
         # self.train_binary = torch.vstack((self.train_binary, binary_new))
