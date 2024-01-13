@@ -3,9 +3,12 @@ import numpy as np
 
 import random
 import torch
+import sascorer
+import networkx as nx
 
-from rdkit.Chem import Descriptors
+from rdkit.Chem import QED
 
+from tqdm import tqdm
 
 def set_seed(seed):
     random.seed(seed)
@@ -20,21 +23,26 @@ with open("zinc/train.txt", "r") as f:
 smiles = [s.strip("\n\r") for s in smiles]
 
 def get_prop(mol):
-    return Descriptors.ExactMolWt(mol)
+    if mol is not None:
+        score = QED.qed(mol)
+    else:
+        score = 0
+    return score
 
 num_sample = 10000
 samples = []
 props = []
 
 while len(props) < num_sample:
+    print(len(props))
     smi = random.choice(smiles)
 
     mol = Chem.MolFromSmiles(smi)
     score = get_prop(mol)
 
-    if smi not in samples and 0 <= score <= 350:
+    if smi not in samples:
         samples.append(smi)
         props.append(score)
 
-np.save("opt/gri_pmw_train_smiles10k.npy", samples)
-np.save("opt/gri_pmw_train_props10k.npy", props)
+np.save("opt/gri_pqed_train_smiles10k.npy", samples)
+np.save("opt/gri_pqed_train_props10k.npy", props)

@@ -9,6 +9,7 @@ import networkx as nx
 from rdkit.Chem import Descriptors
 from rdkit.Chem import rdmolops
 
+from tqdm import tqdm
 
 def set_seed(seed):
     random.seed(seed)
@@ -17,6 +18,20 @@ def set_seed(seed):
     torch.cuda.manual_seed(seed)
 
 set_seed(908530)
+
+def cal_cycle_score(mol):
+    cycle_list = nx.cycle_basis(
+        nx.Graph(rdmolops.GetAdjacencyMatrix(mol)))
+    if len(cycle_list) == 0:
+        cycle_length = 0
+    else:
+        cycle_length = max([len(j) for j in cycle_list])
+    if cycle_length <= 6:
+        cycle_length = 0
+    else:
+        cycle_length = cycle_length - 6
+
+    return cycle_length
 
 with open("zinc/train.txt", "r") as f:
     smiles = f.readlines()
@@ -43,20 +58,6 @@ def get_prop(mol):
     cycle_mean = -0.04829303989345987
     cycle_std = 0.28775759686956115
 
-    def cal_cycle_score(mol):
-        cycle_list = nx.cycle_basis(
-            nx.Graph(rdmolops.GetAdjacencyMatrix(mol)))
-        if len(cycle_list) == 0:
-            cycle_length = 0
-        else:
-            cycle_length = max([len(j) for j in cycle_list])
-        if cycle_length <= 6:
-            cycle_length = 0
-        else:
-            cycle_length = cycle_length - 6
-
-        return cycle_length
-
     current_log_P_value = Descriptors.MolLogP(mol)
     current_SA_score = -sascorer.calculateScore(mol)
     current_cycle_score = -cal_cycle_score(mol)
@@ -81,6 +82,7 @@ samples = []
 props = []
 
 while len(props) < num_sample:
+    print(len(props))
     smi = random.choice(smiles)
 
     mol = Chem.MolFromSmiles(smi)
@@ -90,5 +92,5 @@ while len(props) < num_sample:
         samples.append(smi)
         props.append(score)
 
-np.save("opt/plogp_train_smiles10k.npy", samples)
-np.save("opt/plogp_train_props10k.npy", props)
+np.save("opt/gri_plogp_train_smiles10k.npy", samples)
+np.save("opt/gri_plogp_train_props10k.npy", props)

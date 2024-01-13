@@ -10,7 +10,15 @@ import numexpr
 numexpr.set_num_threads(numexpr.detect_number_of_cores())
 import pickle as pickle
 
-from bJTVAE import *
+# from bJTVAE import *
+sys.path.append('%s/../bJTVAE/' % os.path.dirname(os.path.realpath(__file__)))
+from mol_tree import Vocab, MolTree
+from jtnn_vae import JTNNVAE
+from jtnn_enc import JTNNEncoder
+from jtmpn import JTMPN
+from mpn import MPN
+from nnutils import create_var
+from datautils import MolTreeFolder, PairTreeFolder, MolTreeDataset
 
 from rdkit import RDLogger                                                                                                                                                               
 RDLogger.DisableLog('rdApp.*')   
@@ -89,6 +97,10 @@ class bVAE_IM(object):
             from scorers.logp_scores import score_function
         elif target_prop == 'tpsa':
             from scorers.tpsa_scores import score_function
+        elif target_prop == 'qed':
+            from scorers.qed_scores import score_function
+        elif target_prop == 'sa':
+            from scorers.sa_scores import score_function
         elif target_prop == 'multi':
             from scorers.multi_scores import score_function
         elif target_prop == 'mw':
@@ -165,7 +177,7 @@ class bVAE_IM(object):
         result_save_dir = configs['opt']['output']
         if not os.path.exists(result_save_dir):
             os.mkdir(result_save_dir)
-        
+
         with open((os.path.join(result_save_dir, "%s_smiles.pkl" % configs['opt']['prop'])), "wb") as f:
             pickle.dump(self.results_smiles, f)
         with open((os.path.join(result_save_dir, "%s_scores.pkl" % configs['opt']['prop'])), "wb") as f:
@@ -246,7 +258,7 @@ class bVAE_IM(object):
                 
             qubo = Q_mat
                 
-        elif model_type == 'fm:
+        elif model_type == 'fm':
             model = TorchFM(self.n_binary, configs['opt']['factor_num']).to(self.device)
             for param in model.parameters():
                 if param.dim() == 1:
@@ -274,7 +286,7 @@ class bVAE_IM(object):
                                         shuffle=False)
 
             optimizer = torch.optim.Adam(model.parameters(),
-                                         lr=configs['opt']['lr'],
+                                         lr=float(configs['opt']['lr']),
                                          weight_decay=configs['opt']['decay_weight'])
             criterion = nn.MSELoss()
 
@@ -426,7 +438,6 @@ class bVAE_IM(object):
             self.iteration += 1
         if self.end_cond == 2:
             self.iteration = 0 # if new molecule is generated, reset to 0
-
         self.results_smiles.append(smiles_new)
         self.results_binary.extend(solution)
         self.results_scores.append(-target_new)

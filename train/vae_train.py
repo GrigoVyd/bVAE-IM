@@ -13,10 +13,21 @@ import argparse
 from collections import deque
 import pickle as pickle
 
-from model import *
-import rdkit
-from tqdm import tqdm
+# from bJTVAE import *
 import os
+import sys
+
+sys.path.append('%s/../bJTVAE/' % os.path.dirname(os.path.realpath(__file__)))
+from mol_tree import Vocab, MolTree
+from jtnn_vae import JTNNVAE
+from jtnn_enc import JTNNEncoder
+from jtmpn import JTMPN
+from mpn import MPN
+from nnutils import create_var
+from datautils import MolTreeFolder, PairTreeFolder, MolTreeDataset
+import rdkit
+
+from tqdm import tqdm
 
 def main_vae_train(train,
              vocab,
@@ -39,7 +50,8 @@ def main_vae_train(train,
     
     vocab = [x.strip("\r\n ") for x in open(vocab)] 
     vocab = Vocab(vocab)
-
+    torch.cuda.set_per_process_memory_fraction(0.2, device=0)
+    torch.cuda.empty_cache()
     model = JTNNVAE(vocab, int(binary_size), int(depthT), int(depthG)).cuda()
     print(model)
 
@@ -67,7 +79,9 @@ def main_vae_train(train,
     
     for epoch in tqdm(range(epoch)):
         loader = MolTreeFolder(train, vocab, batch_size)#, num_workers=4)
+        
         for batch in loader:
+            
             total_step += 1
             temp = max(min_temp, temp*np.exp(-temp_anneal_rate*total_step))
             # try:
@@ -78,7 +92,7 @@ def main_vae_train(train,
             optimizer.step()
 
             meters = meters + np.array([kl_div, wacc * 100, tacc * 100, sacc * 100])
-
+            
             if total_step % print_iter == 0:
                 meters /= print_iter
                 print("[%d] Temp: %.3f Beta: %.3f, KL: %.2f, Word: %.2f, Topo: %.2f, Assm: %.2f, PNorm: %.2f, GNorm: %.2f" \
@@ -98,8 +112,8 @@ def main_vae_train(train,
 
 
 if __name__ == '__main__':
-    lg = rdkit.RDLogger.logger() 
-    lg.setLevel(rdkit.RDLogger.CRITICAL)
+    # lg = rdkit.RDLogger.logger() 
+    # lg.setLevel(rdkit.RDLogger.CRITICAL)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--train', required=True)

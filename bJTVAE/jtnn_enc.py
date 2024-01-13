@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import deque
-from .mol_tree import Vocab, MolTree
-from .nnutils import create_var, index_select_ND
+from mol_tree import Vocab, MolTree
+from nnutils import create_var, index_select_ND
 
 class JTNNEncoder(nn.Module):
 
@@ -28,7 +28,7 @@ class JTNNEncoder(nn.Module):
         node_graph = node_graph.to(self.device)
         mess_graph = mess_graph.to(self.device)
         messages = torch.zeros(mess_graph.size(0), self.hidden_size).to(self.device)
-
+        print(fnode.shape)
         fnode = self.embedding(fnode)
         fmess = index_select_ND(fnode, 0, fmess)
         messages = self.GRU(messages, fmess, mess_graph)

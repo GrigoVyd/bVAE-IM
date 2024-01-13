@@ -18,7 +18,8 @@ class Vocab(object):
         Vocab.penzynes = [s for s in smiles_list if s.count('=') >= 2 and Chem.MolFromSmiles(s).GetNumAtoms() == 5] + ['C1=NCCN1','C1=NNCC1']
         
     def get_index(self, smiles):
-        return self.vmap[smiles]
+        # print(smiles if smiles not in self.vmap.keys() else self.vmap[smiles])
+        return -1 if smiles not in self.vmap.keys() else self.vmap[smiles]
 
     def get_smiles(self, idx):
         return self.vocab[idx]

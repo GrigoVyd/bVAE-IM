@@ -1,10 +1,10 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-from .mol_tree import MolTree
+from mol_tree import MolTree
 import numpy as np
-from .jtnn_enc import JTNNEncoder
-from .mpn import MPN
-from .jtmpn import JTMPN
+from jtnn_enc import JTNNEncoder
+from mpn import MPN
+from jtmpn import JTMPN
 import pickle as pickle
 import os, random
 
@@ -62,17 +62,19 @@ class MolTreeFolder(object):
             fn = os.path.join(self.data_folder, fn)
             with open(fn, 'rb') as f:
                 data = pickle.load(f)
-
+            
             if self.shuffle: 
                 random.shuffle(data) #shuffle data before batch
-
+            
             batches = [data[i : i + self.batch_size] for i in range(0, len(data), self.batch_size)]
-            if len(batches[-1]) < self.batch_size:
-                batches.pop()
+            
+            # if len(batches[-1]) < self.batch_size:
+            #     batches.pop()
 
             dataset = MolTreeDataset(batches, self.vocab, self.assm)
+            
             dataloader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=lambda x:x[0])#, num_workers=self.num_workers)
-
+            
             for b in dataloader:
                 yield b
 
